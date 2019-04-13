@@ -1,48 +1,13 @@
 import math
 from vector_generator import Vector_generator
+from tsne import Graph_generator
 
-translation_list_test = [
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am best",
-	"I am best",
-	"I am best",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-	"I am good",
-]
 
 class Score_generator:
 	def __init__( self, translation_threshold=10 ):
 		self.translation_threshold = translation_threshold
 		self.vector_generator = Vector_generator( )
+		self.graph_generator = Graph_generator()
 
 	def score( self, translation_list ):
 		'''
@@ -53,17 +18,27 @@ class Score_generator:
 		vector_space = self.vector_space_generator( normalized_vector_list )
 		
 		mean_vector = self.find_mean( normalized_vector_list, vector_space )
-		mean_vector = self.normalize( [ mean_vector ] )[0]
-		standard_deviation = self.find_standard_deviation( mean_vector, normalized_vector_list )
-		distance_list = self.distance_list_generator( mean_vector, normalized_vector_list )
-		print distance_list
-		print mean_vector
-		print standard_deviation
+		normalized_mean_vector = self.normalize( [ mean_vector ] )[0]
+		standard_deviation = self.find_standard_deviation( normalized_mean_vector, normalized_vector_list )
+		distance_list = self.distance_list_generator( normalized_mean_vector, normalized_vector_list )
+
 		scores = self.rating_function( distance_list, standard_deviation, self.translation_threshold )
 		scored_translation_list = []
 		for index, score in enumerate( scores ):
 			scored_translation_list.append( { translation_list[ index ] : score } )
-		print scored_translation_list
+
+		tsne_output = self.graph_generator.reduce_dims( normalized_vector_list, normalized_mean_vector )
+		max_score = 0
+		best_fit = ''
+		for element in scored_translation_list:
+			if max_score < element.values()[0]:
+				max_score = element.values()[0]
+				best_fit = element.keys()
+			else:
+				continue
+		print tsne_output 
+		print best_fit
+		print 1 - standard_deviation
 
 	def vector_space_generator( self, normalized_vector_list ):
 		vector_space = []
@@ -114,9 +89,8 @@ class Score_generator:
 			translation threshold
 		'''
 		scored_list = []
-		scale = 0.2 if translation_threshold > len( distance_list ) else 1 
 		for element in distance_list:
-			scored_list.append( 1/ ( element * (standard_deviation ** 2) ) )
+			scored_list.append( (1 / element) )
 		return scored_list
 
 	def find_mean( self, normalized_vector_list, vector_space ):
@@ -141,7 +115,4 @@ class Score_generator:
 		sum = 0
 		for vector in normalized_vector_list:
 			sum += math.pow( self.distance( mean_vector, vector ), 2 )
-		return math.sqrt( sum / ( len( normalized_vector_list ) - 1 ) )
-
-score_generator = Score_generator()
-score_generator.score( translation_list_test )
+		return math.sqrt( sum / ( len( normalized_vector_list ) ) )
